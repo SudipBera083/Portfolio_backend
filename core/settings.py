@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'contact',
     'chatbot',
+    'analytics',
 
 ]
 
@@ -54,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'analytics.middleware.VisitorTrackingMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'

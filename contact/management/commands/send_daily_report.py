@@ -5,67 +5,119 @@ from django.conf import settings
 
 from chatbot.models import ChatMessage
 from contact.models import ContactMessage
+from analytics.models import Visitor
 
 
 class Command(BaseCommand):
-    help = "Send daily chatbot and contact report"
+
+    help = "Send daily analytics report for chatbot, contacts and visitors"
 
     def handle(self, *args, **kwargs):
 
         today = timezone.now().date()
 
-        # Chatbot messages
+        # ---------------------------
+        # Daily Visitors
+        # ---------------------------
+
+        visitors = Visitor.objects.filter(
+            visited_at__date=today
+        ).values("session_id").distinct()
+
+        total_visitors = visitors.count()
+
+        # ---------------------------
+        # Chatbot Messages
+        # ---------------------------
+
         total_chat_messages = ChatMessage.objects.filter(
             created_at__date=today
         ).count()
 
-        # Contact form submissions
-        total_contacts = ContactMessage.objects.filter(
-            created_at__date=today
-        ).count()
+        # ---------------------------
+        # Contact Form Leads
+        # ---------------------------
 
-        # Optional: list contacts
-        contacts = ContactMessage.objects.filter(created_at__date=today)
+        contacts = ContactMessage.objects.filter(
+            created_at__date=today
+        )
+
+        total_contacts = contacts.count()
+
+        # ---------------------------
+        # Conversion Rate
+        # ---------------------------
+
+        conversion_rate = 0
+
+        if total_visitors > 0:
+            conversion_rate = (total_contacts / total_visitors) * 100
+
+        # ---------------------------
+        # Contact Details
+        # ---------------------------
 
         contact_details = "\n".join([
             f"- {c.name} | {c.email} | {c.subject}"
             for c in contacts
         ])
 
-        subject = f"Daily Portfolio Report - {today}"
+        if not contact_details:
+            contact_details = "No contact submissions today."
+
+        # ---------------------------
+        # Email Content
+        # ---------------------------
+
+        subject = f"Daily Portfolio Analytics Report - {today}"
 
         message = f"""
 Hello Sudip,
 
-Here is your daily portfolio activity report.
+Here is your portfolio analytics report for today.
 
 Date: {today}
 
-------------------------------
-CHATBOT ACTIVITY
-------------------------------
-Total Messages Received: {total_chat_messages}
+----------------------------------------
+VISITOR ANALYTICS
+----------------------------------------
 
-------------------------------
+Total Visitors: {total_visitors}
+
+----------------------------------------
+CHATBOT ACTIVITY
+----------------------------------------
+
+Total Chatbot Messages: {total_chat_messages}
+
+----------------------------------------
 CONTACT FORM LEADS
-------------------------------
+----------------------------------------
+
 Total Contact Requests: {total_contacts}
 
-Contact Details:
+Conversion Rate: {conversion_rate:.2f} %
 
-{contact_details if contact_details else "No contacts today"}
+----------------------------------------
+CONTACT DETAILS
+----------------------------------------
 
-------------------------------
+{contact_details}
 
-Your Portfolio AI Assistant
+----------------------------------------
+
+Regards,
+Portfolio AI Assistant
 """
 
         send_mail(
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
-            ["sudipbera083@gmail.com", "sudipberasrijitananda@gmail.com"],
+            ["sudipbera083@gmail.com","sudipberasrijitananda@gmail.com"],
             fail_silently=False,
         )
 
-        self.stdout.write(self.style.SUCCESS("Daily report sent successfully"))
+        self.stdout.write(
+            self.style.SUCCESS("Daily analytics report sent successfully")
+        )
